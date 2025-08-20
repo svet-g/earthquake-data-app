@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
+import sys
 import geopandas
+sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
 from utils.extract_utils import db_engine, get_table, recreate_geometry
 
 cache_path = Path(__file__).parent.parent.parent / 'data' / 'cache' / 'earthquakes.parquet'
