@@ -4,82 +4,50 @@ import plotly.express as px
 from datetime import datetime, timedelta
 from src.extract.extract import extract
 
-def interactive_earthquake_map():
-    st.set_page_config(layout="wide", page_title="Interactive Earthquake Analysis")
+def app():
+    st.set_page_config(layout='wide', page_title='🌍 Earthquake Data Analysis - Last 30 Days')
     
-    st.title('🌍 Interactive Earthquake Analysis')
-    st.markdown("Filter and explore earthquake data with interactive controls")
+    st.title('🌍 Earthquake Data Analysis - Last 30 Days')
     
-    # Load earthquake data
+    # load earthquake df
     df = extract()
+    df = df.copy()
+    df = df[df['mag'] > 0] # remove any earthquake with magnitude less than zero - put this into transform in the etl!
+    df['date'] = df['time'].dt.date # make a date column
+    df['time'] = df['time'].dt.time # make a time column
     
-    # Create sidebar for filters
-    st.sidebar.header('Filters')
+    # create sidebar for filters with 'filters' header
+    st.sidebar.header('⚙️ Filters')
     
-    # Depth Group Filter
-    if 'depth_group' in df.columns:
-        depth_groups = st.sidebar.multiselect(
-            'Depth Group',
-            options=df['depth_group'].unique(),
-            default=df['depth_group'].unique(),
-            help="Select depth categories to display"
-        )
-    else:
-        depth_groups = None
+    # create a function for multiselect filters
+    def create_multiselect_filter(column_name):
+        if column_name in df.columns:
+            return st.sidebar.multiselect(
+                f'{column_name}',
+                options=df[column_name].unique(),
+                default=df[column_name].unique()
+            )
+        else:
+            return None
     
-    # Magnitude Type Filter
-    if 'magType' in df.columns:
-        mag_types = st.sidebar.multiselect(
-            'Magnitude Type',
-            options=df['magType'].unique(),
-            default=df['magType'].unique(),
-            help="Filter by magnitude measurement type"
-        )
-    else:
-        mag_types = None
+    # create filters for depth, magType and alert
+    depth_groups = create_multiselect_filter('depth_group')
+    mag_types = create_multiselect_filter('magType')
+    selected_alerts = create_multiselect_filter('alert')
     
-    # Significance Filter
+    # significance filter
     if 'sig' in df.columns:
         sig_range = st.sidebar.slider(
             'Significance Range',
             min_value=int(df['sig'].min()),
             max_value=int(df['sig'].max()),
-            value=(int(df['sig'].min()), int(df['sig'].max())),
-            help="Filter by earthquake significance (higher = more significant)"
+            value=(int(df['sig'].min()), int(df['sig'].max()))
         )
     else:
         sig_range = None
     
-    # Alert Level Filter
-    if 'alert' in df.columns:
-        alert_levels = df['alert'].dropna().unique()
-        selected_alerts = st.sidebar.multiselect(
-            'Alert Level',
-            options=alert_levels,
-            default=alert_levels,
-            help="Filter by PAGER alert level"
-        )
-    else:
-        selected_alerts = None
-    
-    # Time Filter
-    if 'time' in df.columns:
-        # Convert time column to datetime if it isn't already
-        if not pd.api.types.is_datetime64_any_dtype(df['time']):
-            df['time'] = pd.to_datetime(df['time'])
-        
-        time_range = st.sidebar.date_input(
-            'Date Range',
-            value=(df['time'].min().date(), df['time'].max().date()),
-            min_value=df['time'].min().date(),
-            max_value=df['time'].max().date(),
-            help="Select date range for earthquakes"
-        )
-    else:
-        time_range = None
-    
-    # Apply filters
-    filtered_df = df.copy()
+    # apply filters
+    filtered_df = df.copy().reset_index()
     
     if depth_groups:
         filtered_df = filtered_df[filtered_df['depth_group'].isin(depth_groups)]
@@ -95,59 +63,46 @@ def interactive_earthquake_map():
     
     if selected_alerts:
         filtered_df = filtered_df[
-            (filtered_df['alert'].isin(selected_alerts)) | 
-            (filtered_df['alert'].isna())
+            (filtered_df['alert'].isin(selected_alerts))
         ]
     
-    if time_range and len(time_range) == 2:
-        start_date = pd.Timestamp(time_range[0], tz='UTC')
-        end_date = pd.Timestamp(time_range[1], tz='UTC') + timedelta(days=1)
-        filtered_df = filtered_df[
-            (filtered_df['time'] >= start_date) & 
-            (filtered_df['time'] < end_date)
-        ]
-    
-    # Display filtered results info
+    # display filtered results info
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Total Earthquakes", len(filtered_df))
+        st.metric('Total Earthquakes', len(filtered_df))
     with col2:
         if len(filtered_df) > 0:
-            st.metric("Avg Magnitude", f"{filtered_df['mag'].mean():.1f}")
+            st.metric('Average Magnitude', f'{filtered_df['mag'].mean():.2f}')
         else:
-            st.metric("Avg Magnitude", "N/A")
+            st.metric('Average Magnitude', 'N/A')
     with col3:
         if len(filtered_df) > 0:
-            st.metric("Max Significance", f"{filtered_df['sig'].max():,}")
+            st.metric('Max Significance', f'{filtered_df['sig'].max():,}')
         else:
-            st.metric("Max Significance", "N/A")
+            st.metric('Max Significance', 'N/A')
     with col4:
         if len(filtered_df) > 0:
-            high_alert = len(filtered_df[filtered_df['alert'].notna()])
-            st.metric("With Alerts", high_alert)
+            alert = len(filtered_df[filtered_df['alert'].notna()])
+            st.metric('With Alerts', alert)
         else:
-            st.metric("With Alerts", "N/A")
+            st.metric('With Alerts', 'N/A')
     
     if len(filtered_df) == 0:
-        st.warning("No earthquakes match the selected filters. Try adjusting your criteria.")
+        st.warning('No earthquakes match the selected filters. Try adjusting your criteria.')
         return
     
-    # Create tabs for different visualizations
-    tab1, tab2, tab3 = st.tabs(["🗺️ Interactive Map", "📊 Time Series", "📈 Analysis"])
+    # create tabs for different visualizations
+    tab1, tab2, tab3 = st.tabs(['🗺️ Interactive Map', '⏳ Time Analysis', '📈 Significance vs Magnitude Analysis'])
     
     with tab1:
-        st.subheader("Interactive Earthquake Map")
-        
-        # Create size column for plotting (handle negative magnitudes)
-        filtered_df = filtered_df.copy()
-        filtered_df['size'] = filtered_df['mag'].apply(lambda x: max(abs(x) * 3 + 5, 3))
+        st.subheader('Earthquakes Colored by significance, Sized by magnitude')
         
         # Create interactive plotly map
-        fig = px.scatter_map(
+        fig_map = px.scatter_map(
             filtered_df,
             lat='latitude',
             lon='longitude',
-            size='size',
+            size='mag',
             color='sig',
             hover_data={
                 'mag': True,
@@ -157,84 +112,65 @@ def interactive_earthquake_map():
                 'magType': True,
                 'depth_group': True,
                 'place': True,
+                'date': True,
                 'time': True,
                 'latitude': ':.3f',
                 'longitude': ':.3f'
             },
-            color_continuous_scale='Viridis',
-            size_max=20,
-            height=600,
-            title="Earthquakes colored by Significance, sized by Magnitude"
+            color_continuous_scale='Oryel',
+            size_max=15,
+            height=900,
+            opacity=0.7,
+            map_style = 'carto-darkmatter',
+            zoom=1
         )
         
-        fig.update_layout(
-            margin={"r":0,"t":50,"l":0,"b":0},
-            coloraxis_colorbar=dict(
-                title="Significance"
-            )
-        )
+        st.plotly_chart(fig_map)
         
-        st.plotly_chart(fig, use_container_width=True)
     
     with tab2:
-        st.subheader("Earthquake Timeline")
+        st.subheader('Earthquakes Over Time')
         
-        # Time series plot
-        daily_counts = filtered_df.groupby(filtered_df['time'].dt.date).size().reset_index()
-        daily_counts.columns = ['date', 'count']
+        # earthquakes over time
+        daily_count = filtered_df.groupby(filtered_df['date']).count()
+        daily_count['date'] = daily_count.index
+        daily_count['count'] = daily_count['id']
         
         fig_timeline = px.line(
-            daily_counts,
+            daily_count,
             x='date',
             y='count',
-            title='Daily Earthquake Count',
-            height=400
+            height=700
         )
         
         fig_timeline.update_layout(
-            xaxis_title="Date",
-            yaxis_title="Number of Earthquakes"
+            xaxis_title='Date',
+            yaxis_title='Number of Earthquakes'
         )
         
-        st.plotly_chart(fig_timeline, use_container_width=True)
+        fig_timeline.update_traces(line_color='#edd492', line_width=3)
+        
+        st.plotly_chart(fig_timeline)
     
     with tab3:
-        st.subheader("Statistical Analysis")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Magnitude distribution by depth group
-            if 'depth_group' in filtered_df.columns:
-                fig_mag = px.box(
-                    filtered_df,
-                    x='depth_group',
-                    y='mag',
-                    title='Magnitude Distribution by Depth Group',
-                    height=400
-                )
-                st.plotly_chart(fig_mag, use_container_width=True)
-        
-        with col2:
-            # Significance vs Magnitude scatter
-            fig_sig = px.scatter(
-                filtered_df,
-                x='mag',
-                y='sig',
-                color='depth_group' if 'depth_group' in filtered_df.columns else None,
-                title='Significance vs Magnitude',
-                height=400,
-                hover_data=['place', 'time']
-            )
-            st.plotly_chart(fig_sig, use_container_width=True)
-    
-    # Display filtered data table
-    with st.expander("📋 View Filtered Data"):
-        st.dataframe(
-            filtered_df[['time', 'place', 'mag', 'depth', 'sig', 'alert', 'magType', 'depth_group']].head(100),
-            use_container_width=True
-        )
+        st.subheader('Earthquake by Significance against Magnitude')
 
-# Call the function
+        # sig vs mag
+        fig_sig = px.scatter(
+            data_frame=filtered_df,
+            x='mag',
+            y='sig',
+            color='depth_group',
+            height=700,
+            color_discrete_map={'shallow': '#edd492', 'intermediate': '#f78e5c', 'deep': '#f76b56', 'highest_depth': '#ee4d5a'},
+            hover_data=['felt', 'cdi', 'alert'], # sig value is determined on a number of factors, including: magnitude, maximum MMI, felt reports, and estimated impact.
+            opacity=0.7
+        )
+        st.plotly_chart(fig_sig)
+    
+    # show filtered_df
+    with st.expander('📋 Data'):
+        st.dataframe(filtered_df)
+
 if __name__ == '__main__':
-    interactive_earthquake_map()
+    app()
