@@ -108,7 +108,7 @@ The app automatically filters out earthquakes with magnitude ≤ 0.
 
 ## Cloud App
 
-The app is also available on the streamlit cloud server at 
+The app is also available on the streamlit cloud server at https://earthquake-data-app-6cpe85zeccizvapp4zwch87.streamlit.app/
 
 ## Notes / Tips
 
