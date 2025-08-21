@@ -30,7 +30,7 @@ def get_table(engine, table_name, schema) -> pd.DataFrame:
         return df
         
 
-def recreate_geometry(df) -> geopandas.GeoDataFrame:
-    geometry = geopandas.points_from_xy(df['longitude'], df['latitude'], df['depth'])
-    gdf = geopandas.GeoDataFrame(df, geometry=geometry)
-    return gdf
+# def recreate_geometry(df) -> geopandas.GeoDataFrame:
+#     geometry = geopandas.points_from_xy(df['longitude'], df['latitude'], df['depth'])
+#     gdf = geopandas.GeoDataFrame(df, geometry=geometry)
+#     return gdf
