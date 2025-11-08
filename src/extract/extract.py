@@ -6,7 +6,7 @@ import pandas as pd
 sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
 from utils.extract_utils import db_engine, get_table
 
-cache_path = Path(__file__).parent.parent.parent / 'data' / 'cache' / 'earthquakes.parquet'
+cache_path = Path(__file__).parent.parent.parent / 'data' / 'earthquakes.parquet'
 
 def extract():
     
