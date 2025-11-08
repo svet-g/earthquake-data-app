@@ -2,7 +2,28 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
+import random
+import time
 from src.extract.extract import extract
+
+def load_data_with_progress():
+    facts = [
+        "💫 Did you know Earth has ~50 earthquakes per day?",
+        "🌍 The largest earthquake was 9.5 magnitude in Chile, 1960!",
+        "⚡ Earthquakes travel at speeds up to 8 km per second!",
+        "🗻 The Ring of Fire accounts for 90% of the world's earthquakes!",
+        "📊 Over 500,000 earthquakes occur each year worldwide!"
+    ]
+    
+    fact = random.choice(facts)
+    
+    with st.spinner(fact):
+        progress_bar = st.progress(0)
+        for i in range(100):
+            time.sleep(0.01)
+            progress_bar.progress(i + 1)
+        progress_bar.empty()
+        return extract()
 
 def app():
     st.set_page_config(layout='wide', page_title='🌍 Earthquake Data Analysis - Last 30 Days')
@@ -13,9 +34,11 @@ def app():
     if st.sidebar.button('🔄 Refresh Data'):
         st.cache_data.clear()
         st.rerun()
+        
+    # Load data with progress bar and fun fact
+    df = load_data_with_progress()
     
     # load earthquake df
-    df = extract()
     df = df.copy()
     df = df[df['mag'] > 0] # remove any earthquake with magnitude less than zero - put this into transform in the etl!
     df['date'] = df['time'].dt.date # make a date column
