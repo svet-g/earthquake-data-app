@@ -8,6 +8,11 @@ def app():
     st.set_page_config(layout='wide', page_title='🌍 Earthquake Data Analysis - Last 30 Days')
     
     st.title('🌍 Earthquake Data Analysis - Last 30 Days')
+
+    # Add refresh button in sidebar
+    if st.sidebar.button('🔄 Refresh Data'):
+        st.cache_data.clear()
+        st.rerun()
     
     # load earthquake df
     df = extract()
